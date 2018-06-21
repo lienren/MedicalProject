@@ -2,12 +2,11 @@
  * @Author: Lienren 
  * @Date: 2018-06-07 14:41:33 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-06-20 12:17:49
+ * @Last Modified time: 2018-06-21 19:35:44
  */
 'use strict';
 
 const assert = require('assert');
-const Router = require('koa-router');
 const comm = require('../utils/comm');
 const makeimgcode = require('../utils/makeimgcode');
 const encrypt = require('../utils/encrypt');
