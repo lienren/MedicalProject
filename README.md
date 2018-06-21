@@ -1,2 +1,0 @@
-# MedicalProject
-Medical Project
