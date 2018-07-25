@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-06-22 00:33:20
+ * @Last Modified time: 2018-07-25 22:36:47
  */
 'use strict';
 
@@ -74,7 +74,7 @@ module.exports = async (ctx, next) => {
     // 响应间隔时间
     let ms = new Date() - requestStartTime;
     // 记录响应日志
-    log.logResponse(ctx, ms);
+    // log.logResponse(ctx, ms);
 
     ctx.body = {
       code: '000000',

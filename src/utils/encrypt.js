@@ -2,14 +2,19 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 12:06:42 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-06-20 12:26:05
+ * @Last Modified time: 2018-07-12 21:09:32
  */
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const md5 = require('md5');
 const CryptoJS = require('crypto-js');
+const NodeRSA = require('node-rsa');
 const key = CryptoJS.enc.Utf8.parse('7e^V9FLMatcyX0kA').toString();
 const iv = CryptoJS.enc.Utf8.parse('kr6V%xV&tQj8kH13').toString();
+const rsaKeyData = fs.readFileSync(path.resolve(__dirname, './rsa_pri.key'), 'utf-8');
+const rsaKey = new NodeRSA(rsaKeyData, 'pkcs8');
 
 module.exports = {
   // 获取Md5加密
@@ -42,5 +47,13 @@ module.exports = {
     } catch (e) {
       return '';
     }
+  },
+  // 获取RSA加密密文
+  getRsaEncryptVal: (val, encoding = 'base64') => {
+    return rsaKey.encrypt(val, encoding);
+  },
+  // 获取RSA解密密文
+  getRsaDecryptVal: (val, encoding = 'utf8') => {
+    return rsaKey.decrypt(val, encoding);
   }
 };

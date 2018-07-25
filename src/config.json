@@ -1,6 +1,6 @@
 {
   "sys": {
-    "port": 20000,
+    "port": 8888,
     "staticPath": "../assets/",
     "uploadFilePath": "../../uploads/",
     "logFilePath": {
