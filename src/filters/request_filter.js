@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-07-25 22:36:47
+ * @Last Modified time: 2018-08-15 17:39:51
  */
 'use strict';
 
@@ -22,8 +22,8 @@ module.exports = async (ctx, next) => {
   let token = headers['authentication'] || '';
 
   ctx.request.body = {
-    ...ctx.request.body,
-    ...ctx.request.query
+    ...ctx.request.query,
+    ...ctx.request.body
   };
 
   ctx.work = {
@@ -76,11 +76,13 @@ module.exports = async (ctx, next) => {
     // 记录响应日志
     // log.logResponse(ctx, ms);
 
-    ctx.body = {
-      code: '000000',
-      message: 'success',
-      reslut: ctx.body
-    };
+    if (apiUrl.indexOf('editor') === -1) {
+      ctx.body = {
+        code: '000000',
+        message: 'success',
+        reslut: ctx.body
+      };
+    }
   } catch (error) {
     // 响应间隔时间
     let ms = new Date() - requestStartTime;

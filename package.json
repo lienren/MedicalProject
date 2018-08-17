@@ -14,9 +14,13 @@
   "author": "Lienren",
   "license": "ISC",
   "dependencies": {
+    "amqplib": "^0.5.2",
+    "await-busboy": "^1.0.2",
     "axios": "^0.18.0",
     "base64-img": "^1.0.4",
+    "co-wechat-api": "^3.7.1",
     "crypto-js": "^3.1.9-1",
+    "ftp": "^0.3.10",
     "gd-bmp": "^1.2.4",
     "ioredis": "^3.2.2",
     "koa": "^2.5.0",
@@ -30,11 +34,11 @@
     "md5": "^2.2.1",
     "moment": "^2.22.2",
     "mysql2": "^1.5.3",
+    "node-rsa": "^1.0.0",
     "require-directory": "^2.1.1",
+    "ueditor-koa": "^1.1.4",
     "uuid": "^3.2.1",
-    "xml2js": "^0.4.19",
-    "amqplib": "^0.5.2",
-    "ftp": "^0.3.10",
-    "node-rsa": "^1.0.0"
+    "wechat-oauth": "^1.4.2",
+    "xml2js": "^0.4.19"
   }
 }
