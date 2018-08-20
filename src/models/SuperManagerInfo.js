@@ -47,6 +47,10 @@ module.exports = function(sequelize, DataTypes) {
     lastTime: {
       type: DataTypes.BIGINT,
       allowNull: true
+    },
+    isDel: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
     }
   }, {
     tableName: 'SuperManagerInfo'

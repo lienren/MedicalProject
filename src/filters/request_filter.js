@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-15 17:39:51
+ * @Last Modified time: 2018-08-19 13:31:47
  */
 'use strict';
 
@@ -80,7 +80,7 @@ module.exports = async (ctx, next) => {
       ctx.body = {
         code: '000000',
         message: 'success',
-        reslut: ctx.body
+        result: ctx.body
       };
     }
   } catch (error) {
