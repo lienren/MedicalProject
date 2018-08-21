@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-19 13:31:47
+ * @Last Modified time: 2018-08-21 19:45:39
  */
 'use strict';
 
@@ -16,6 +16,7 @@ const now = date.getTimeStamp();
 module.exports = async (ctx, next) => {
   // 响应开始时间
   const requestStartTime = new Date();
+  let requestEndTime = 0;
 
   let headers = ctx.request.headers;
   let apiUrl = ctx.request.path || '';
@@ -29,13 +30,24 @@ module.exports = async (ctx, next) => {
   ctx.work = {
     managerId: 0, // 管理员编号
     managerLoginName: '', // 管理员帐号
-    managerRealName: '' // 管理员真实姓名
+    managerRealName: '', // 管理员真实姓名
+    managerPhone: '', // 管理员手机号
+    pageName: '',
+    pageUrl: ctx.url,
+    actionName: '',
+    eventName: '',
+    activeName: ''
   };
 
   try {
     // 获取注册的API接口地址
     let resultApi = await ctx.orm().BaseApi.findOne({ where: { apiUrl: apiUrl } });
     assert.notStrictEqual(resultApi, null, 'ApiNotExists');
+
+    ctx.work.pageName = resultApi.apiName;
+    ctx.work.actionName = '执行';
+    ctx.work.eventName = resultApi.apiShortName;
+    ctx.work.activeName = resultApi.activeName;
 
     // 接口需要鉴权验证
     if (resultApi.isAuth === 1) {
@@ -58,6 +70,7 @@ module.exports = async (ctx, next) => {
           ctx.work.managerId = resultManager.id;
           ctx.work.managerLoginName = resultManager.loginName;
           ctx.work.managerRealName = resultManager.realName;
+          ctx.work.managerPhone = resultManager.phone;
           break;
         case 2:
           // 普通类接口
@@ -72,7 +85,8 @@ module.exports = async (ctx, next) => {
     await next();
 
     // 响应间隔时间
-    let ms = new Date() - requestStartTime;
+    requestEndTime = new Date();
+    let ms = requestEndTime - requestStartTime;
     // 记录响应日志
     // log.logResponse(ctx, ms);
 
@@ -85,7 +99,8 @@ module.exports = async (ctx, next) => {
     }
   } catch (error) {
     // 响应间隔时间
-    let ms = new Date() - requestStartTime;
+    requestEndTime = new Date();
+    let ms = requestEndTime - requestStartTime;
 
     // 获取错误信息
     let resultErrorContext = await ctx.orm().BaseErrorContext.findOne({
@@ -104,5 +119,24 @@ module.exports = async (ctx, next) => {
       code: error.code || '999999',
       message: error.message || 'unknown error'
     };
+  }
+
+  if (ctx.work.managerId && ctx.work.managerId > 0 && ctx.work.pageUrl !== '/super/getlogs') {
+    ctx.orm().SuperManagerLoginfo.create({
+      pageName: ctx.work.pageName,
+      pageUrl: ctx.work.pageUrl,
+      actionName: ctx.work.actionName,
+      eventName: ctx.work.eventName,
+      activeName: ctx.work.activeName,
+      addTime: requestStartTime.getTime(),
+      managerId: ctx.work.managerId,
+      managerRealName: ctx.work.managerRealName,
+      managerLoginName: ctx.work.managerLoginName,
+      managerPhone: ctx.work.managerPhone,
+      reqParam: JSON.stringify(ctx.request.body),
+      reqTime: requestStartTime.getTime(),
+      repParam: JSON.stringify(ctx.body),
+      repTime: requestEndTime.getTime()
+    });
   }
 };

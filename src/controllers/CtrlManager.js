@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:35:28 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-20 15:59:26
+ * @Last Modified time: 2018-08-21 19:43:38
  */
 'use strict';
 
@@ -14,6 +14,25 @@ const encrypt = require('../utils/encrypt');
 
 const configData = require('./ConfigData');
 const now = date.getTimeStamp();
+
+function serializeMenu(menus, parentId) {
+  let list = [];
+  menus.forEach(menu => {
+    if (menu.parentId === parentId) {
+      let menuObj = {
+        title: menu.menuName,
+        key: `${menu.id}`,
+        id: menu.menuLink,
+        icon: menu.menuIcon,
+        name: menu.menuName
+      };
+      menuObj.children = serializeMenu(menus, menu.id);
+      list.push(menuObj);
+    }
+  });
+
+  return list;
+}
 
 module.exports = {
   login: async ctx => {
@@ -124,6 +143,7 @@ module.exports = {
 
     ctx.body = {};
   },
+  /***************************** 管理员管理 *************************************/
   getManagers: async ctx => {
     let current = ctx.request.body.current || 1;
     let pageSize = ctx.request.body.pageSize || 20;
@@ -131,6 +151,8 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+    let startAddTime = ctx.request.body.startAddTime || 0;
+    let endAddTime = ctx.request.body.endAddTime || 0;
     let condition = {};
 
     if (loginName !== '') {
@@ -151,6 +173,11 @@ module.exports = {
     if (state !== -1) {
       condition.state = state;
     }
+    if (startAddTime > 0 && endAddTime > 0) {
+      condition.addTime = {
+        [Op.between]: [startAddTime, endAddTime]
+      };
+    }
 
     condition.isDel = 0;
 
@@ -166,19 +193,23 @@ module.exports = {
     });
 
     ctx.body = {
-      totle: resultCount.count,
+      total: resultCount.count,
       list: result,
       current,
       pageSize
     };
   },
   addManager: async ctx => {
-    let id = ctx.request.body.id || 0;
     let loginName = ctx.request.body.loginName || '';
     let loginPwd = ctx.request.body.loginPwd || '';
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+
+    assert.notStrictEqual(loginName, '', 'InputParamIsNull');
+    assert.notStrictEqual(loginPwd, '', 'InputParamIsNull');
+    assert.notStrictEqual(realName, '', 'InputParamIsNull');
+    assert.notStrictEqual(phone, '', 'InputParamIsNull');
 
     let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
       where: {
@@ -206,6 +237,8 @@ module.exports = {
       lastTime: now,
       isDel: 0
     });
+
+    ctx.body = {};
   },
   editManager: async ctx => {
     let id = ctx.request.body.id || 0;
@@ -214,6 +247,14 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+
+    assert.notStrictEqual(id, 0, 'InputParamIsNull');
+    assert.notStrictEqual(loginName, '', 'InputParamIsNull');
+    assert.notStrictEqual(realName, '', 'InputParamIsNull');
+    assert.notStrictEqual(phone, '', 'InputParamIsNull');
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
 
     let updateField = {};
 
@@ -261,6 +302,8 @@ module.exports = {
   editManagerState: async ctx => {
     let id = ctx.request.body.id || 0;
     let state = ctx.request.body.state;
+
+    assert.notStrictEqual(id, 0, 'InputParamIsNull');
 
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
@@ -331,5 +374,446 @@ module.exports = {
     );
 
     ctx.body = {};
+  },
+  getManagerRole: async ctx => {
+    let id = ctx.request.body.id || 0;
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
+
+    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameManagerResult, null, 'ManagerNotExists');
+
+    let resultManagerRole = await ctx.orm().SuperManagerRoleInfo.findAll({
+      where: {
+        managerId: id
+      }
+    });
+
+    let resultRole = await ctx.orm().SuperRoleInfo.findAll({
+      where: {
+        id: {
+          [Op.in]: resultManagerRole.map(val => {
+            return val.roleId;
+          })
+        }
+      }
+    });
+
+    ctx.body = resultRole;
+  },
+  setManagerRole: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let roleIds = ctx.request.body.roleIds || [];
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
+
+    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameManagerResult, null, 'ManagerNotExists');
+
+    // 删除管理员所有角色
+    await ctx
+      .orm()
+      .query(`delete from SuperManagerRoleInfo where managerId = ${id}`)
+      .spread((results, metadata) => {});
+
+    // 添加管理员角色数据
+    let data = roleIds.map(role => {
+      return { managerId: id, roleId: parseInt(role), addTime: now };
+    });
+    ctx.orm().SuperManagerRoleInfo.bulkCreate(data);
+
+    ctx.body = {};
+  },
+  getManagerMenu: async ctx => {
+    let id = ctx.work.managerId || 0;
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 0, 'ManagerNotExists');
+
+    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameManagerResult, null, 'ManagerNotExists');
+
+    let resultRoleIds = await ctx.orm().SuperManagerRoleInfo.findAll({
+      where: {
+        managerId: id
+      }
+    });
+
+    let resultMenuIds = await ctx.orm().SuperRoleMenuInfo.findAll({
+      where: {
+        roleId: {
+          [Op.in]: resultRoleIds.map(val => {
+            return val.roleId;
+          })
+        }
+      }
+    });
+
+    let menuIds = [];
+    resultMenuIds.forEach(menu => {
+      menuIds.push(menu.menuId);
+      if (!menuIds.includes(menu.menuId.toString().substring(0, 1))) {
+        menuIds.push(menu.menuId.toString().substring(0, 1));
+      }
+    });
+
+    let resultMenus = await ctx.orm().BaseMenu.findAll({
+      where: {
+        id: {
+          [Op.in]: menuIds
+        }
+      },
+      order: [['sort']]
+    });
+
+    ctx.body = serializeMenu(resultMenus, 0);
+  },
+  /***************************** 角色管理 *************************************/
+  getRoles: async ctx => {
+    let current = ctx.request.body.current || 1;
+    let pageSize = ctx.request.body.pageSize || 20;
+    let roleName = ctx.request.body.roleName || '';
+    let startAddTime = ctx.request.body.startAddTime || 0;
+    let endAddTime = ctx.request.body.endAddTime || 0;
+    let condition = {};
+
+    if (roleName !== '') {
+      condition.roleName = {
+        [Op.like]: `%${roleName}%`
+      };
+    }
+    if (startAddTime > 0 && endAddTime > 0) {
+      condition.addTime = {
+        [Op.between]: [startAddTime, endAddTime]
+      };
+    }
+
+    condition.isDel = 0;
+
+    let resultCount = await ctx.orm().SuperRoleInfo.findAndCount({
+      where: condition
+    });
+    let result = await ctx.orm().SuperRoleInfo.findAll({
+      offset: (current - 1) * pageSize,
+      limit: pageSize,
+      where: condition,
+      order: [['addTime', 'DESC']]
+    });
+
+    ctx.body = {
+      total: resultCount.count,
+      list: result,
+      current,
+      pageSize
+    };
+  },
+  addRole: async ctx => {
+    let roleName = ctx.request.body.roleName || '';
+
+    assert.notStrictEqual(roleName, '', 'InputParamIsNull');
+
+    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+      where: {
+        roleName: roleName,
+        isDel: 0
+      }
+    });
+
+    assert.ok(sameResult !== null, 'RoleNameExists');
+
+    ctx.orm().SuperRoleInfo.create({
+      roleName: roleName,
+      addTime: now,
+      isDel: 0
+    });
+
+    ctx.body = {};
+  },
+  delRole: async ctx => {
+    let id = ctx.request.body.id || 0;
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 1, 'SuperRoleNotUpdate');
+
+    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameResult, null, 'RoleNotExists');
+
+    // 删除时，清除token
+    ctx.orm().SuperRoleInfo.update(
+      {
+        isDel: 1
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
+  getRoleMenu: async ctx => {
+    let id = ctx.request.body.id || 0;
+
+    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameResult, null, 'RoleNotExists');
+
+    let result = await ctx.orm().SuperRoleMenuInfo.findAll({
+      where: {
+        roleId: id
+      }
+    });
+
+    ctx.body = result.map(val => {
+      return `${val.menuId}`;
+    });
+  },
+  setRoleMenu: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let menuIds = ctx.request.body.menuIds || [];
+
+    // 超级管理员禁止更新
+    assert.notStrictEqual(id, 1, 'SuperRoleNotUpdate');
+
+    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameResult, null, 'RoleNotExists');
+
+    // 删除角色所有菜单
+    await ctx
+      .orm()
+      .query(`delete from SuperRoleMenuInfo where roleId = ${id}`)
+      .spread((results, metadata) => {});
+
+    // 添加角色菜单数据
+    let data = menuIds.map(menu => {
+      return { roleId: id, menuId: parseInt(menu), addTime: now };
+    });
+    ctx.orm().SuperRoleMenuInfo.bulkCreate(data);
+
+    ctx.body = {};
+  },
+  /***************************** 菜单管理 *************************************/
+  getMenus: async ctx => {
+    let result = await ctx.orm().BaseMenu.findAll({
+      where: {
+        isDel: 0
+      },
+      order: [['sort']]
+    });
+
+    let list = serializeMenu(result, 0);
+
+    ctx.body = list;
+  },
+  getMenuList: async ctx => {
+    let current = ctx.request.body.current || 1;
+    let pageSize = ctx.request.body.pageSize || 20;
+    let menuName = ctx.request.body.menuName || '';
+    let startAddTime = ctx.request.body.startAddTime || 0;
+    let endAddTime = ctx.request.body.endAddTime || 0;
+    let condition = {};
+
+    if (menuName !== '') {
+      condition.menuName = {
+        [Op.like]: `%${menuName}%`
+      };
+    }
+    if (startAddTime > 0 && endAddTime > 0) {
+      condition.addTime = {
+        [Op.between]: [startAddTime, endAddTime]
+      };
+    }
+
+    condition.isDel = 0;
+
+    let resultCount = await ctx.orm().BaseMenu.findAndCount({
+      where: condition
+    });
+    let result = await ctx.orm().BaseMenu.findAll({
+      offset: (current - 1) * pageSize,
+      limit: pageSize,
+      where: condition,
+      order: [['sort']]
+    });
+
+    ctx.body = {
+      total: resultCount.count,
+      list: result,
+      current,
+      pageSize
+    };
+  },
+  addMenu: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let menuName = ctx.request.body.menuName || '';
+    let menuLink = ctx.request.body.menuLink || '';
+    let menuIcon = ctx.request.body.menuIcon || '';
+    let parentId = ctx.request.body.parentId || 0;
+    let sort = ctx.request.body.sort || 0;
+    let level = 1;
+    let parentName = '';
+
+    assert.notStrictEqual(id, 0, 'InputParamIsNull');
+    assert.notStrictEqual(menuName, '', 'InputParamIsNull');
+    assert.notStrictEqual(menuLink, '', 'InputParamIsNull');
+
+    let sameResult1 = ctx.orm().BaseMenu.findOne({
+      where: {
+        id: id
+      }
+    });
+
+    assert.ok(sameResult1 !== null, 'MenuNameExists');
+
+    let sameResult2 = ctx.orm().BaseMenu.findOne({
+      where: {
+        menuName: menuName,
+        isDel: 0
+      }
+    });
+
+    assert.ok(sameResult2 !== null, 'MenuNameExists');
+
+    if (parentId > 0) {
+      let parentResult = await ctx.orm().BaseMenu.findOne({
+        where: {
+          id: parentId,
+          isDel: 0
+        }
+      });
+
+      assert.ok(parentResult !== null, 'ParentMenuExists');
+
+      level = parentResult.level + 1;
+      parentName = parentResult.menuName;
+    }
+
+    ctx.orm().BaseMenu.create({
+      id: id,
+      menuName: menuName,
+      menuLink: menuLink,
+      menuIcon: menuIcon,
+      parentId: parentId,
+      parentName: parentName,
+      level: level,
+      sort: sort,
+      addTime: now,
+      isDel: 0
+    });
+
+    ctx.body = {};
+  },
+  delMenu: async ctx => {
+    let id = ctx.request.body.id || 0;
+
+    let sameResult = ctx.orm().BaseMenu.findOne({
+      where: {
+        id: id,
+        isDel: 0
+      }
+    });
+
+    assert.notStrictEqual(sameResult, null, 'MenuNameExists');
+
+    ctx.orm().BaseMenu.update(
+      {
+        isDel: 1
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
+  /***************************** 日志管理 *************************************/
+  getLogs: async ctx => {
+    let current = ctx.request.body.current || 1;
+    let pageSize = ctx.request.body.pageSize || 20;
+    let pageName = ctx.request.body.pageName || '';
+    let eventName = ctx.request.body.eventName || '';
+    let activeName = ctx.request.body.activeName || '';
+    let startAddTime = ctx.request.body.startAddTime || 0;
+    let endAddTime = ctx.request.body.endAddTime || 0;
+    let condition = {};
+
+    if (pageName !== '') {
+      condition.pageName = {
+        [Op.like]: `%${pageName}%`
+      };
+    }
+    if (eventName !== '') {
+      condition.eventName = {
+        [Op.like]: `%${eventName}%`
+      };
+    }
+    if (activeName !== '') {
+      condition.activeName = {
+        [Op.like]: `%${activeName}%`
+      };
+    }
+    if (startAddTime > 0 && endAddTime > 0) {
+      condition.addTime = {
+        [Op.between]: [startAddTime, endAddTime]
+      };
+    }
+
+    let resultCount = await ctx.orm().SuperManagerLoginfo.findAndCount({
+      where: condition
+    });
+    let result = await ctx.orm().SuperManagerLoginfo.findAll({
+      attributes: ['id', 'pageName', 'pageUrl', 'actionName', 'eventName', 'activeName', 'addTime', 'managerId', 'managerRealName', 'managerLoginName', 'managerPhone'],
+      offset: (current - 1) * pageSize,
+      limit: pageSize,
+      where: condition,
+      order: [['addTime', 'DESC']]
+    });
+
+    ctx.body = {
+      total: resultCount.count,
+      list: result,
+      current,
+      pageSize
+    };
   }
 };
