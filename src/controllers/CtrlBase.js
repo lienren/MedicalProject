@@ -2,14 +2,16 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:37:43 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-06-21 23:49:37
+ * @Last Modified time: 2018-09-08 09:59:44
  */
 'use strict';
 
 const assert = require('assert');
+const path = require('path');
 const comm = require('../utils/comm');
 const date = require('../utils/date');
 const makeimgcode = require('../utils/makeimgcode');
+const config = require('../config.json');
 
 const configData = require('./ConfigData');
 const now = date.getTimeStamp();
@@ -44,5 +46,15 @@ module.exports = {
     ctx.body = {
       imgbase64: imgCodeBase64
     };
+  },
+  // 上传文件
+  uploadFile: async ctx => {
+    if (ctx.req.files && ctx.req.files.length > 0) {
+      ctx.body = {
+        filePath: `${config.sys.domain}/uploads/files/${ctx.req.files[0].filename}`
+      };
+    } else {
+      ctx.body = {};
+    }
   }
 };

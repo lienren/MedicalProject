@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-07 14:35:15 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-21 18:03:15
+ * @Last Modified time: 2018-09-08 09:28:03
  */
 'use strict';
 
@@ -15,6 +15,8 @@ const router = new Router();
 router
   // 获取图形验证码
   .post('/base/getimagecode', ctrl.CtrlBase.getImageCode)
+  // 上传文件
+  .post('/base/uploadfile', uploadFile.getMulter('files').any(), ctrl.CtrlBase.uploadFile)
   .post('/super/login', ctrl.CtrlManager.login)
   .post('/super/setpassword', ctrl.CtrlManager.setPassword)
   /***************************** 管理员管理 *************************************/

@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:35:28 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-21 19:43:38
+ * @Last Modified time: 2018-09-08 00:21:28
  */
 'use strict';
 
@@ -13,7 +13,6 @@ const date = require('../utils/date');
 const encrypt = require('../utils/encrypt');
 
 const configData = require('./ConfigData');
-const now = date.getTimeStamp();
 
 function serializeMenu(menus, parentId) {
   let list = [];
@@ -40,6 +39,7 @@ module.exports = {
     let loginPwd = ctx.request.body.loginPwd || '';
     let imgCode = ctx.request.body.imgCode || '';
     let imgCodeToken = ctx.request.body.imgCodeToken || '';
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(loginName, '', configData.ERROR_KEY_ENUM.InputParamIsNull);
     assert.notStrictEqual(loginPwd, '', configData.ERROR_KEY_ENUM.InputParamIsNull);
@@ -107,6 +107,7 @@ module.exports = {
   setPassword: async ctx => {
     let oldPassword = ctx.request.body.oldPassword || '';
     let newPassword = ctx.request.body.newPassword || '';
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(oldPassword, '', configData.ERROR_KEY_ENUM.InputParamIsNull);
     assert.notStrictEqual(newPassword, '', configData.ERROR_KEY_ENUM.InputParamIsNull);
@@ -205,20 +206,21 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(loginName, '', 'InputParamIsNull');
     assert.notStrictEqual(loginPwd, '', 'InputParamIsNull');
     assert.notStrictEqual(realName, '', 'InputParamIsNull');
     assert.notStrictEqual(phone, '', 'InputParamIsNull');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         loginName: loginName,
         isDel: 0
       }
     });
 
-    assert.ok(sameManagerResult !== null, 'ManagerLoginNameExists');
+    assert.ok(sameManagerResult === null, 'ManagerLoginNameExists');
 
     // 重新生成密钥索引
     let ManagerPwdSaleCount = await configData.getConfig(ctx, configData.CONFIG_KEY_ENUM.ManagerPwdSaleCount);
@@ -247,6 +249,7 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(id, 0, 'InputParamIsNull');
     assert.notStrictEqual(loginName, '', 'InputParamIsNull');
@@ -258,7 +261,7 @@ module.exports = {
 
     let updateField = {};
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -308,7 +311,7 @@ module.exports = {
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -351,7 +354,7 @@ module.exports = {
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -381,7 +384,7 @@ module.exports = {
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -411,11 +414,12 @@ module.exports = {
   setManagerRole: async ctx => {
     let id = ctx.request.body.id || 0;
     let roleIds = ctx.request.body.roleIds || [];
+    let now = date.getTimeStamp();
 
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperManagerNotUpdate');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -444,7 +448,7 @@ module.exports = {
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 0, 'ManagerNotExists');
 
-    let sameManagerResult = ctx.orm().SuperManagerInfo.findOne({
+    let sameManagerResult = await ctx.orm().SuperManagerInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -529,17 +533,18 @@ module.exports = {
   },
   addRole: async ctx => {
     let roleName = ctx.request.body.roleName || '';
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(roleName, '', 'InputParamIsNull');
 
-    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+    let sameResult = await ctx.orm().SuperRoleInfo.findOne({
       where: {
         roleName: roleName,
         isDel: 0
       }
     });
 
-    assert.ok(sameResult !== null, 'RoleNameExists');
+    assert.ok(sameResult === null, 'RoleNameExists');
 
     ctx.orm().SuperRoleInfo.create({
       roleName: roleName,
@@ -555,7 +560,7 @@ module.exports = {
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperRoleNotUpdate');
 
-    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+    let sameResult = await ctx.orm().SuperRoleInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -581,7 +586,7 @@ module.exports = {
   getRoleMenu: async ctx => {
     let id = ctx.request.body.id || 0;
 
-    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+    let sameResult = await ctx.orm().SuperRoleInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -603,11 +608,12 @@ module.exports = {
   setRoleMenu: async ctx => {
     let id = ctx.request.body.id || 0;
     let menuIds = ctx.request.body.menuIds || [];
+    let now = date.getTimeStamp();
 
     // 超级管理员禁止更新
     assert.notStrictEqual(id, 1, 'SuperRoleNotUpdate');
 
-    let sameResult = ctx.orm().SuperRoleInfo.findOne({
+    let sameResult = await ctx.orm().SuperRoleInfo.findOne({
       where: {
         id: id,
         isDel: 0
@@ -671,7 +677,7 @@ module.exports = {
       offset: (current - 1) * pageSize,
       limit: pageSize,
       where: condition,
-      order: [['sort']]
+      order: [['id'], ['sort']]
     });
 
     ctx.body = {
@@ -690,27 +696,28 @@ module.exports = {
     let sort = ctx.request.body.sort || 0;
     let level = 1;
     let parentName = '';
+    let now = date.getTimeStamp();
 
     assert.notStrictEqual(id, 0, 'InputParamIsNull');
     assert.notStrictEqual(menuName, '', 'InputParamIsNull');
     assert.notStrictEqual(menuLink, '', 'InputParamIsNull');
 
-    let sameResult1 = ctx.orm().BaseMenu.findOne({
+    let sameResult1 = await ctx.orm().BaseMenu.findOne({
       where: {
         id: id
       }
     });
 
-    assert.ok(sameResult1 !== null, 'MenuNameExists');
+    assert.ok(sameResult1 === null, 'MenuNameExists');
 
-    let sameResult2 = ctx.orm().BaseMenu.findOne({
+    let sameResult2 = await ctx.orm().BaseMenu.findOne({
       where: {
         menuName: menuName,
         isDel: 0
       }
     });
 
-    assert.ok(sameResult2 !== null, 'MenuNameExists');
+    assert.ok(sameResult2 === null, 'MenuNameExists');
 
     if (parentId > 0) {
       let parentResult = await ctx.orm().BaseMenu.findOne({
@@ -720,7 +727,7 @@ module.exports = {
         }
       });
 
-      assert.ok(parentResult !== null, 'ParentMenuExists');
+      assert.ok(parentResult === null, 'ParentMenuExists');
 
       level = parentResult.level + 1;
       parentName = parentResult.menuName;
@@ -743,15 +750,6 @@ module.exports = {
   },
   delMenu: async ctx => {
     let id = ctx.request.body.id || 0;
-
-    let sameResult = ctx.orm().BaseMenu.findOne({
-      where: {
-        id: id,
-        isDel: 0
-      }
-    });
-
-    assert.notStrictEqual(sameResult, null, 'MenuNameExists');
 
     ctx.orm().BaseMenu.update(
       {
@@ -802,7 +800,21 @@ module.exports = {
       where: condition
     });
     let result = await ctx.orm().SuperManagerLoginfo.findAll({
-      attributes: ['id', 'pageName', 'pageUrl', 'actionName', 'eventName', 'activeName', 'addTime', 'managerId', 'managerRealName', 'managerLoginName', 'managerPhone'],
+      attributes: [
+        'id',
+        'pageName',
+        'pageUrl',
+        'actionName',
+        'eventName',
+        'activeName',
+        'addTime',
+        'managerId',
+        'managerRealName',
+        'managerLoginName',
+        'managerPhone',
+        'reqParam',
+        'repParam'
+      ],
       offset: (current - 1) * pageSize,
       limit: pageSize,
       where: condition,

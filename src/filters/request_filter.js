@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-21 19:45:39
+ * @Last Modified time: 2018-09-07 23:09:38
  */
 'use strict';
 
@@ -11,9 +11,8 @@ const assert = require('assert');
 const date = require('../utils/date');
 const log = require('../utils/log');
 
-const now = date.getTimeStamp();
-
 module.exports = async (ctx, next) => {
+  let now = date.getTimeStamp();
   // 响应开始时间
   const requestStartTime = new Date();
   let requestEndTime = 0;

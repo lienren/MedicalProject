@@ -1,8 +1,9 @@
 {
   "sys": {
     "port": 8888,
+    "domain": "http://localhost:8888",
     "staticPath": "../assets/",
-    "uploadFilePath": "../../uploads/",
+    "uploadFilePath": "../../assets/uploads/",
     "logFilePath": {
       "errorLogPath": "../../logs/error/error",
       "responseLogPath": "../../logs/response/response"

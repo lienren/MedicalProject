@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 11:52:42 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-08-15 16:56:51
+ * @Last Modified time: 2018-09-05 20:14:36
  */
 'use strict';
 
@@ -41,7 +41,9 @@ app.use(requestFilter);
 
 // 路由
 const router = require('./router.js');
+const router_bs = require('./router_bs.js');
 app.use(router);
+app.use(router_bs);
 
 // 绑定访问端口
 http.createServer(app.callback()).listen(config.sys.port);
