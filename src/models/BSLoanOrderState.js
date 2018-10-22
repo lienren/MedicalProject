@@ -1,30 +1,18 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('SuperManagerInfo', {
+  return sequelize.define('BSLoanOrderState', {
     id: {
       type: DataTypes.INTEGER(11),
       allowNull: false,
       primaryKey: true,
       autoIncrement: true
     },
-    loginName: {
-      type: DataTypes.STRING(100),
+    orderId: {
+      type: DataTypes.INTEGER(11),
       allowNull: true
     },
-    loginPwd: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    realName: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    phone: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    salt: {
+    orderSn: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
@@ -32,35 +20,51 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.INTEGER(11),
       allowNull: true
     },
-    token: {
+    stateName: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    tokenOverTime: {
-      type: DataTypes.BIGINT,
-      allowNull: true
-    },
-    sex: {
+    extPrice: {
       type: DataTypes.INTEGER(11),
       allowNull: true
     },
-    depName: {
-      type: DataTypes.STRING(100),
+    extReturnTime: {
+      type: DataTypes.BIGINT,
+      allowNull: true
+    },
+    remark: {
+      type: DataTypes.STRING(1000),
       allowNull: true
     },
     addTime: {
       type: DataTypes.BIGINT,
       allowNull: true
     },
-    lastTime: {
-      type: DataTypes.BIGINT,
+    managerId: {
+      type: DataTypes.INTEGER(11),
       allowNull: true
     },
-    isDel: {
+    managerName: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    managerPhone: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    loanPrice: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    loanInterest: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    loanServicePrice: {
       type: DataTypes.INTEGER(11),
       allowNull: true
     }
   }, {
-    tableName: 'SuperManagerInfo'
+    tableName: 'BSLoanOrderState'
   });
 };

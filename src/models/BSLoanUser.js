@@ -1,50 +1,26 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('SuperManagerInfo', {
+  return sequelize.define('BSLoanUser', {
     id: {
       type: DataTypes.INTEGER(11),
       allowNull: false,
       primaryKey: true,
       autoIncrement: true
     },
-    loginName: {
+    userName: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    loginPwd: {
+    userPhone: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    realName: {
+    userSex: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    phone: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    salt: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    state: {
-      type: DataTypes.INTEGER(11),
-      allowNull: true
-    },
-    token: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    tokenOverTime: {
-      type: DataTypes.BIGINT,
-      allowNull: true
-    },
-    sex: {
-      type: DataTypes.INTEGER(11),
-      allowNull: true
-    },
-    depName: {
+    userIdCard: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
@@ -52,8 +28,36 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.BIGINT,
       allowNull: true
     },
-    lastTime: {
+    isVerfiy: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    verfiyManagerId: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    verfiyManager: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyManagerPhone: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyTime: {
       type: DataTypes.BIGINT,
+      allowNull: true
+    },
+    addManagerId: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    addManager: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    addManagerPhone: {
+      type: DataTypes.STRING(100),
       allowNull: true
     },
     isDel: {
@@ -61,6 +65,6 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true
     }
   }, {
-    tableName: 'SuperManagerInfo'
+    tableName: 'BSLoanUser'
   });
 };

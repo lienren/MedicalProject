@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:37:43 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-09-08 09:59:44
+ * @Last Modified time: 2018-10-22 08:55:03
  */
 'use strict';
 
@@ -14,7 +14,6 @@ const makeimgcode = require('../utils/makeimgcode');
 const config = require('../config.json');
 
 const configData = require('./ConfigData');
-const now = date.getTimeStamp();
 
 module.exports = {
   // 获取图形验证码
@@ -22,6 +21,8 @@ module.exports = {
     let token = ctx.request.body.token || '';
 
     assert.notStrictEqual(token, '', configData.ERROR_KEY_ENUM.ImageCodeTokenIsNull);
+
+    let now = date.getTimeStamp();
 
     // 获取图形验证码随机数配置
     let ImageCodeRandomCount = await configData.getConfig(ctx, configData.CONFIG_KEY_ENUM.ImageCodeRandomCount);

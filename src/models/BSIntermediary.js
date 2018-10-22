@@ -1,59 +1,59 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('SuperManagerInfo', {
+  return sequelize.define('BSIntermediary', {
     id: {
       type: DataTypes.INTEGER(11),
       allowNull: false,
       primaryKey: true,
       autoIncrement: true
     },
-    loginName: {
+    iName: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    loginPwd: {
+    iContact: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    realName: {
+    iContactPhone: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    phone: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    salt: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    state: {
+    isVerfiy: {
       type: DataTypes.INTEGER(11),
-      allowNull: true
-    },
-    token: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    tokenOverTime: {
-      type: DataTypes.BIGINT,
-      allowNull: true
-    },
-    sex: {
-      type: DataTypes.INTEGER(11),
-      allowNull: true
-    },
-    depName: {
-      type: DataTypes.STRING(100),
       allowNull: true
     },
     addTime: {
       type: DataTypes.BIGINT,
       allowNull: true
     },
-    lastTime: {
+    verfiyManagerId: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    verfiyManager: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyManagerPhone: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyTime: {
       type: DataTypes.BIGINT,
+      allowNull: true
+    },
+    addManagerId: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    addManager: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    addManagerPhone: {
+      type: DataTypes.STRING(100),
       allowNull: true
     },
     isDel: {
@@ -61,6 +61,6 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true
     }
   }, {
-    tableName: 'SuperManagerInfo'
+    tableName: 'BSIntermediary'
   });
 };

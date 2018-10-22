@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:35:28 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-09-08 00:21:28
+ * @Last Modified time: 2018-10-22 12:07:45
  */
 'use strict';
 
@@ -50,7 +50,7 @@ module.exports = {
     let resultImgCodeToken = await ctx.orm().BaseImgCode.findOne({
       where: {
         token: imgCodeToken,
-        imgCode: imgCode,
+        imgCode: imgCode.toLocaleUpperCase(),
         isUse: 0,
         overTime: { [Op.gt]: now }
       }
@@ -186,7 +186,7 @@ module.exports = {
       where: condition
     });
     let result = await ctx.orm().SuperManagerInfo.findAll({
-      attributes: ['id', 'loginName', 'realName', 'phone', 'state', 'addTime', 'lastTime'],
+      attributes: ['id', 'loginName', 'realName', 'phone', 'state', 'depName', 'sex', 'addTime', 'lastTime'],
       offset: (current - 1) * pageSize,
       limit: pageSize,
       where: condition,
@@ -206,6 +206,8 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+    let sex = ctx.request.body.sex;
+    let depName = ctx.request.body.depName || '';
     let now = date.getTimeStamp();
 
     assert.notStrictEqual(loginName, '', 'InputParamIsNull');
@@ -233,6 +235,8 @@ module.exports = {
       phone: phone,
       salt: salt,
       state: state,
+      sex: sex,
+      depName: depName,
       token: '',
       tokenOverTime: now,
       addTime: now,
@@ -249,6 +253,8 @@ module.exports = {
     let realName = ctx.request.body.realName || '';
     let phone = ctx.request.body.phone || '';
     let state = ctx.request.body.state;
+    let sex = ctx.request.body.sex;
+    let depName = ctx.request.body.depName || '';
     let now = date.getTimeStamp();
 
     assert.notStrictEqual(id, 0, 'InputParamIsNull');
@@ -281,12 +287,16 @@ module.exports = {
     }
 
     if (sameManagerResult.id === 1) {
-      // 超级管理员只能修改密码和手机号
+      // 超级管理员只能修改密码、手机号和部门
       updateField.phone = phone;
+      updateField.depName = depName;
+      updateField.sex = sex;
     } else {
       updateField.realName = realName;
       updateField.phone = phone;
       updateField.state = state;
+      updateField.depName = depName;
+      updateField.sex = sex;
       if (state === 0) {
         // 关闭状态时，清除token
         updateField.token = '';
