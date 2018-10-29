@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-10 19:31:57 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-06-07 11:33:48
+ * @Last Modified time: 2018-10-22 22:15:24
  */
 'use strict';
 
@@ -27,13 +27,13 @@ module.exports = {
 
     img.drawCircle(comm.rand(0, img.w), comm.rand(0, img.h), comm.rand(10, img.h), comm.rand(0, 0xffffff));
 
-    img.fillRect(
+    /* img.fillRect(
       comm.rand(0, img.w),
       comm.rand(0, img.h),
       comm.rand(10, img.h),
       comm.rand(10, img.h),
       comm.rand(0, 0xffffff)
-    );
+    ); */
 
     img.drawLine(
       comm.rand(0, img.w),
@@ -50,7 +50,7 @@ module.exports = {
     let y1 = comm.rand(-5, 5); // Y轴位置调整
     let w2 = comm.rand(10, 15); // 数值越小频率越高
     let h3 = comm.rand(4, 6); // 数值越小幅度越大
-    let bl = comm.rand(1, 5); // 曲线宽度
+    let bl = comm.rand(1, 3); // 曲线宽度
     for (let i = -w; i < w; i += 0.1) {
       let y = Math.floor((h / h3) * Math.sin(i / w2) + h / 2 + y1);
       let x = Math.floor(i + w);

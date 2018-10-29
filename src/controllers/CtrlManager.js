@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-21 19:35:28 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-10-22 12:07:45
+ * @Last Modified time: 2018-10-28 13:55:39
  */
 'use strict';
 
@@ -96,12 +96,20 @@ module.exports = {
       }
     );
 
+    // 获取管理员所有角色
+    let resultManagerRoles = await ctx.orm().SuperManagerRoleInfo.findAll({
+      where: {
+        managerId: resultManager.id
+      }
+    });
+
     ctx.body = {
       id: resultManager.id,
       loginName: resultManager.loginName,
       realName: resultManager.realName,
       phone: resultManager.phone,
-      token: token
+      token: token,
+      roles: resultManagerRoles
     };
   },
   setPassword: async ctx => {
@@ -495,7 +503,8 @@ module.exports = {
       where: {
         id: {
           [Op.in]: menuIds
-        }
+        },
+        isDel: 0
       },
       order: [['sort']]
     });
@@ -737,7 +746,7 @@ module.exports = {
         }
       });
 
-      assert.ok(parentResult === null, 'ParentMenuExists');
+      assert.notStrictEqual(parentResult, null, 'ParentMenuExists');
 
       level = parentResult.level + 1;
       parentName = parentResult.menuName;
