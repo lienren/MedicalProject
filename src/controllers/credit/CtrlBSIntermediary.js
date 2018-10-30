@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-10-22 13:53:15 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-10-28 15:45:19
+ * @Last Modified time: 2018-10-29 22:11:08
  */
 'use strict';
 
@@ -529,6 +529,8 @@ module.exports = {
     let loanMaxPrice = ctx.request.body.loanMaxPrice || 999999999;
     let stime = ctx.request.body.stime || 0;
     let etime = ctx.request.body.etime || 0;
+    let returnSTime = ctx.request.body.returnSTime || 0;
+    let returnETime = ctx.request.body.returnETime || 0;
     let state = ctx.request.body.state || [];
 
     let condition = {};
@@ -584,6 +586,12 @@ module.exports = {
     if (stime !== 0 && etime !== 0) {
       condition.addTime = {
         [Op.between]: [stime, etime]
+      };
+    }
+
+    if (returnSTime !== 0 && returnETime !== 0) {
+      condition.extReturnTime = {
+        [Op.between]: [returnSTime, returnETime]
       };
     }
 
@@ -994,6 +1002,8 @@ module.exports = {
           .from('BSLoanOrder')
           .field('managerId')
           .field('sum(lastloanPrice) as lastloanPrice')
+          .field('sum(lastloanInterest) as lastloanInterest')
+          .field('sum(lastloanServicePrice) as lastloanServicePrice')
           .field('count(1) as loanCount')
           .group('managerId'),
         'a'
@@ -1003,6 +1013,8 @@ module.exports = {
       .field('b.sex')
       .field('b.depName')
       .field('a.lastloanPrice')
+      .field('a.lastloanInterest')
+      .field('a.lastloanServicePrice')
       .field('a.loanCount')
       .join('SuperManagerInfo', 'b', 'b.id = a.managerId')
       .order('a.lastloanPrice', false)
@@ -1014,6 +1026,8 @@ module.exports = {
       .from('BSLoanOrder')
       .field('managerId')
       .field('sum(lastloanPrice) as lastloanPrice')
+      .field('sum(lastloanInterest) as lastloanInterest')
+      .field('sum(lastloanServicePrice) as lastloanServicePrice')
       .field('count(1) as loanCount')
       .where('state = ?', 4)
       .group('managerId')
