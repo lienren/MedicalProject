@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-10-22 13:53:15 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-10-29 22:11:08
+ * @Last Modified time: 2018-11-04 12:51:29
  */
 'use strict';
 
@@ -17,6 +17,7 @@ let stateNameDist = {
   '3': '已还款',
   '4': '已逾期',
   '5': '需催收',
+  '997': '已作废',
   '998': '已撤单',
   '999': '已取消'
 };
@@ -166,7 +167,7 @@ module.exports = {
       iName: iName,
       iContact: iContact,
       iContactPhone: iContactPhone,
-      isVerfiy: 0,
+      isVerfiy: 1,
       addTime: now,
       verfiyManagerId: 0,
       verfiyManager: '',
@@ -315,6 +316,21 @@ module.exports = {
       order: [['id', 'DESC']]
     });
 
+    if (result && result.length > 0) {
+      for (let i = 0, j = result.length; i < j; i++) {
+        let count = await ctx.orm().BSLoanOrder.count({
+          where: {
+            userId: result[i].id,
+            isVerfiy: 1,
+            state: {
+              [Op.ne]: 997
+            }
+          }
+        });
+        result[i].dataValues.loanCount = count;
+      }
+    }
+
     ctx.body = {
       total: resultCount.count,
       list: result,
@@ -413,7 +429,7 @@ module.exports = {
       userPhone: userPhone,
       userSex: userSex,
       userIdCard: userIdCard,
-      isVerfiy: 0,
+      isVerfiy: 1,
       addTime: now,
       verfiyManagerId: 0,
       verfiyManager: '',
@@ -532,6 +548,7 @@ module.exports = {
     let returnSTime = ctx.request.body.returnSTime || 0;
     let returnETime = ctx.request.body.returnETime || 0;
     let state = ctx.request.body.state || [];
+    let isVerfiy = ctx.request.body.isVerfiy || [];
 
     let condition = {};
 
@@ -597,7 +614,19 @@ module.exports = {
 
     if (state && state.length > 0) {
       condition.state = {
-        [Op.in]: state
+        [Op.in]: state,
+        [Op.ne]: 997
+      };
+    } else {
+      // 排除已作废
+      condition.state = {
+        [Op.ne]: 997
+      };
+    }
+
+    if (isVerfiy && isVerfiy.length > 0) {
+      condition.isVerfiy = {
+        [Op.in]: isVerfiy
       };
     }
 
@@ -705,8 +734,75 @@ module.exports = {
       realReturnTime: 0,
       lastRemark: '',
       addTime: now,
-      updateTime: now
+      updateTime: now,
+      isVerfiy: 0,
+      verfiyManagerId: 0,
+      verfiyManager: '',
+      verfiyManagerPhone: '',
+      verfiyTime: 0
     });
+
+    ctx.body = {};
+  },
+  editLoanOrder: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let loanPrice = ctx.request.body.loanPrice || 0;
+    let loanInterest = ctx.request.body.loanInterest || 0;
+    let loanServicePrice = ctx.request.body.loanServicePrice || 0;
+    let loanTime = ctx.request.body.loanTime || 0;
+    let shouldReturnTime = ctx.request.body.shouldReturnTime || 0;
+    let remark = ctx.request.body.remark || '';
+    let now = date.getTimeStamp();
+
+    assert.notStrictEqual(loanPrice, 0, 'InputParamIsNull');
+    assert.notStrictEqual(loanTime, 0, 'InputParamIsNull');
+    assert.notStrictEqual(shouldReturnTime, 0, 'InputParamIsNull');
+
+    ctx.orm().BSLoanOrder.update(
+      {
+        loanPrice: loanPrice,
+        loanInterest: loanInterest,
+        loanServicePrice: loanServicePrice,
+        lastloanPrice: loanPrice,
+        lastloanInterest: loanInterest,
+        lastloanServicePrice: loanServicePrice,
+        loanTime: loanTime,
+        shouldReturnTime: shouldReturnTime,
+        remark: remark,
+        extReturnTime: shouldReturnTime,
+        updateTime: now,
+        isVerfiy: 0
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
+  verfiyLoanOrder: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let isVerfiy = ctx.request.body.isVerfiy || 0;
+    let now = date.getTimeStamp();
+
+    assert.notStrictEqual(id, 0, 'InputParamIsNull');
+
+    ctx.orm().BSLoanOrder.update(
+      {
+        isVerfiy: isVerfiy,
+        verfiyTime: now,
+        verfiyManagerId: ctx.work.managerId,
+        verfiyManager: ctx.work.managerRealName,
+        verfiyManagerPhone: ctx.work.managerPhone
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
 
     ctx.body = {};
   },
@@ -717,6 +813,7 @@ module.exports = {
     let loanInterest = ctx.request.body.loanInterest || 0;
     let loanServicePrice = ctx.request.body.loanServicePrice || 0;
     let extPrice = ctx.request.body.extPrice || 0;
+    let extLoanTime = ctx.request.body.extLoanTime || 0;
     let extReturnTime = ctx.request.body.extReturnTime || 0;
     let remark = ctx.request.body.remark || '';
     let now = date.getTimeStamp();
@@ -750,9 +847,6 @@ module.exports = {
     });
 
     let updateParam = {
-      lastloanPrice: loanPrice,
-      lastloanInterest: loanInterest,
-      lastloanServicePrice: loanServicePrice,
       state: state,
       stateName: stateNameDist[`${state}`],
       lastRemark: remark,
@@ -761,9 +855,62 @@ module.exports = {
 
     if (state === 2) {
       // 展期
-      updateParam.extCount = sequelize.literal('`extCount` + 1');
-      updateParam.extPrice = sequelize.literal('`extPrice` + ' + extPrice);
-      updateParam.extReturnTime = extReturnTime;
+      /* 展期订单：每一次展期后需要将老订单变成状态是完成，展期订单自动生成一个新的订单，
+      展期后显示新订单为展期1、第二次为展期2，一次类推～前一个订单就变成完成，举例子，
+      订单展期1需要继续展期，操作展期后，订单展期1变为已完成，自动生成一个订单展期2，输入相关信息，保存订单*/
+      // updateParam.extCount = sequelize.literal('`extCount` + 1');
+      // updateParam.extPrice = sequelize.literal('`extPrice` + ' + extPrice);
+      // updateParam.extReturnTime = extReturnTime;
+
+      // 标记完成
+      updateParam.state = 3;
+      updateParam.stateName = stateNameDist[`3`];
+      updateParam.realReturnPrice = loanPrice;
+      updateParam.realReturnTime = now;
+
+      let extCount = result.extCount + 1;
+      let orderSn = `${result.orderSn}-${extCount > 9 ? extCount : '0' + extCount}`;
+
+      ctx.orm().BSLoanOrder.create({
+        orderSn: orderSn,
+        userId: result.userId,
+        userName: result.userName,
+        userPhone: result.userPhone,
+        userSex: result.userSex,
+        userIdCard: result.userIdCard,
+        userChannel: result.userChannel,
+        userSource: result.userSource,
+        userSourceName: result.userSourceName,
+        userSourceUserName: result.userSourceUserName,
+        userSourcePhone: result.userSourcePhone,
+        loanPrice: loanPrice,
+        loanInterest: loanInterest,
+        loanServicePrice: loanServicePrice,
+        lastloanPrice: loanPrice,
+        lastloanInterest: loanInterest,
+        lastloanServicePrice: loanServicePrice,
+        loanTime: extLoanTime,
+        shouldReturnTime: extReturnTime,
+        remark: remark,
+        managerId: ctx.work.managerId,
+        managerName: ctx.work.managerRealName,
+        managerPhone: ctx.work.managerPhone,
+        state: 2,
+        stateName: stateNameDist[`2`],
+        extCount: extCount,
+        extPrice: 0,
+        extReturnTime: extReturnTime,
+        realReturnPrice: 0,
+        realReturnTime: 0,
+        lastRemark: '',
+        addTime: now,
+        updateTime: now,
+        isVerfiy: 0,
+        verfiyManagerId: 0,
+        verfiyManager: '',
+        verfiyManagerPhone: '',
+        verfiyTime: 0
+      });
     }
 
     if (state === 3) {
@@ -802,22 +949,48 @@ module.exports = {
     ctx.body = result;
   },
   getStsOrders: async ctx => {
-    let result1 = await ctx
+    /* let result1 = await ctx
       .orm()
       .sql.select()
       .from('BSLoanOrder')
       .field('sum(lastloanPrice) / 100 as lastloanPrice')
       .field('sum(realReturnPrice) / 100 as realReturnPrice')
       .field('count(1) as loanCount')
-      .where('managerId = ?', ctx.work.managerId)
-      .query();
+      .where('managerId = ? and state != ? and isVerfiy = ?', ctx.work.managerId, 997, 1)
+      .query(); */
 
-    let result2 = await ctx
+    let today = date.getTodayTimeStamp();
+
+    let result1 = await ctx
       .orm()
       .sql.select()
       .from('BSLoanOrder')
-      .field('count(1) as returnCount')
-      .where('state = ? and managerId = ?', 3, ctx.work.managerId)
+      .field('sum(lastloanPrice) / 100 as lastloanPrice')
+      .field('sum(realReturnPrice) / 100 as realReturnPrice')
+      .where(
+        'managerId = ? and state != ? and isVerfiy = ? and extReturnTime between ? and ?',
+        ctx.work.managerId,
+        997,
+        1,
+        today.starttime,
+        today.endtime
+      )
+      .query();
+
+    let result11 = await ctx
+      .orm()
+      .sql.select()
+      .from('BSLoanOrder')
+      .field('sum(lastloanPrice) / 100 as lastloanPrice1')
+      .where('managerId = ? and state = ? and isVerfiy = ?', ctx.work.managerId, 4, 1)
+      .query();
+
+    let result111 = await ctx
+      .orm()
+      .sql.select()
+      .from('BSLoanOrder')
+      .field('sum(lastloanInterest) / 100 as lastloanInterest')
+      .where('managerId = ? and state = ? and isVerfiy = ? and ', ctx.work.managerId, 3, 1)
       .query();
 
     let result3 = await ctx
@@ -830,7 +1003,7 @@ module.exports = {
           .from('BSLoanOrder')
           .field("DATE_FORMAT(FROM_UNIXTIME(addTime/1000),'%m/%d') as date")
           .field('lastloanPrice/100 as lastloanPrice')
-          .where('managerId = ?', ctx.work.managerId),
+          .where('managerId = ? and state != ? and isVerfiy = ?', ctx.work.managerId, 997, 1),
         'a'
       )
       .field('a.date')
@@ -848,7 +1021,7 @@ module.exports = {
           .from('BSLoanOrder')
           .field("DATE_FORMAT(FROM_UNIXTIME(realReturnTime/1000),'%m/%d') as date")
           .field('realReturnPrice/100 as realReturnPrice')
-          .where('state = ? and managerId = ?', 3, ctx.work.managerId),
+          .where('state = ? and managerId = ? and isVerfiy = ?', 3, ctx.work.managerId, 1),
         'a'
       )
       .field('a.date')
@@ -893,26 +1066,43 @@ module.exports = {
 
     ctx.body = {
       ...result1[0],
-      ...result2[0],
+      ...result11[0],
+      ...result111[0],
       month: month
     };
   },
   getStsOrdersAll: async ctx => {
+    let today = date.getTodayTimeStamp();
+
     let result1 = await ctx
       .orm()
       .sql.select()
       .from('BSLoanOrder')
       .field('sum(lastloanPrice) / 100 as lastloanPrice')
       .field('sum(realReturnPrice) / 100 as realReturnPrice')
-      .field('count(1) as loanCount')
+      .where(
+        'state != ? and isVerfiy = ? and extReturnTime between ? and ?',
+        997,
+        1,
+        today.starttime,
+        today.endtime
+      )
       .query();
-
-    let result2 = await ctx
+    
+    let result11 = await ctx
       .orm()
       .sql.select()
       .from('BSLoanOrder')
-      .field('count(1) as returnCount')
-      .where('state = ?', 3)
+      .field('sum(lastloanPrice) / 100 as lastloanPrice1')
+      .where('state = ? and isVerfiy = ?', 4, 1)
+      .query();
+    
+    let result111 = await ctx
+      .orm()
+      .sql.select()
+      .from('BSLoanOrder')
+      .field('sum(lastloanInterest) / 100 as lastloanInterest')
+      .where('state = ? and isVerfiy = ?', 3, 1)
       .query();
 
     let result3 = await ctx
@@ -924,7 +1114,8 @@ module.exports = {
           .sql.select()
           .from('BSLoanOrder')
           .field("DATE_FORMAT(FROM_UNIXTIME(addTime/1000),'%m/%d') as date")
-          .field('lastloanPrice/100 as lastloanPrice'),
+          .field('lastloanPrice/100 as lastloanPrice')
+          .where('state != ? and isVerfiy = ?', 997, 1),
         'a'
       )
       .field('a.date')
@@ -942,7 +1133,7 @@ module.exports = {
           .from('BSLoanOrder')
           .field("DATE_FORMAT(FROM_UNIXTIME(realReturnTime/1000),'%m/%d') as date")
           .field('realReturnPrice/100 as realReturnPrice')
-          .where('state = ?', 3),
+          .where('state = ? and isVerfiy = ?', 3, 1),
         'a'
       )
       .field('a.date')
@@ -987,7 +1178,8 @@ module.exports = {
 
     ctx.body = {
       ...result1[0],
-      ...result2[0],
+      ...result11[0],
+      ...result111[0],
       month: month
     };
   },
@@ -1005,6 +1197,7 @@ module.exports = {
           .field('sum(lastloanInterest) as lastloanInterest')
           .field('sum(lastloanServicePrice) as lastloanServicePrice')
           .field('count(1) as loanCount')
+          .where('state != ? and isVerfiy = ?', 997, 1)
           .group('managerId'),
         'a'
       )
@@ -1029,10 +1222,10 @@ module.exports = {
       .field('sum(lastloanInterest) as lastloanInterest')
       .field('sum(lastloanServicePrice) as lastloanServicePrice')
       .field('count(1) as loanCount')
-      .where('state = ?', 4)
+      .where('state = ? and isVerfiy = ?', 4, 1)
       .group('managerId')
       .query();
-      
+
     ctx.body = {
       a: result5,
       b: result6

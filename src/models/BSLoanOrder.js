@@ -139,6 +139,26 @@ module.exports = function(sequelize, DataTypes) {
     lastloanServicePrice: {
       type: DataTypes.INTEGER(11),
       allowNull: true
+    },
+    isVerfiy: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    verfiyManagerId: {
+      type: DataTypes.INTEGER(11),
+      allowNull: true
+    },
+    verfiyManager: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyManagerPhone: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    verfiyTime: {
+      type: DataTypes.BIGINT,
+      allowNull: true
     }
   }, {
     tableName: 'BSLoanOrder'

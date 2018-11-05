@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-06-07 14:35:15 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-10-28 18:53:17
+ * @Last Modified time: 2018-11-02 22:25:31
  */
 'use strict';
 
@@ -27,6 +27,8 @@ router
   .post('/credit/loanorder/getloanorder', ctrl.CtrlBSIntermediary.getLoanOrder)
   .post('/credit/loanorder/getloanorderdetail', ctrl.CtrlBSIntermediary.getLoanOrderDetail)
   .post('/credit/loanorder/addloanorder', ctrl.CtrlBSIntermediary.addLoanOrder)
+  .post('/credit/loanorder/editloanorder', ctrl.CtrlBSIntermediary.editLoanOrder)
+  .post('/credit/loanorder/verfiy', ctrl.CtrlBSIntermediary.verfiyLoanOrder)
   .post('/credit/loanorder/addloanorderstate', ctrl.CtrlBSIntermediary.addLoanOrderState)
   .post('/credit/loanorder/getloanorderstate', ctrl.CtrlBSIntermediary.getLoanOrderState)
   .post('/credit/loanorder/getstsorders', ctrl.CtrlBSIntermediary.getStsOrders)

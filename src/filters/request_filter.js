@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 13:38:30 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-09-07 23:09:38
+ * @Last Modified time: 2018-11-01 23:21:25
  */
 'use strict';
 
@@ -134,7 +134,7 @@ module.exports = async (ctx, next) => {
       managerPhone: ctx.work.managerPhone,
       reqParam: JSON.stringify(ctx.request.body),
       reqTime: requestStartTime.getTime(),
-      repParam: JSON.stringify(ctx.body),
+      repParam: JSON.stringify(ctx.body).length > 4900 ? '' : JSON.stringify(ctx.body),
       repTime: requestEndTime.getTime()
     });
   }
