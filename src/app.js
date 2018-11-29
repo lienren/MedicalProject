@@ -2,7 +2,7 @@
  * @Author: Lienren 
  * @Date: 2018-04-19 11:52:42 
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-10-24 21:45:33
+ * @Last Modified time: 2018-11-23 00:03:10
  */
 'use strict';
 
@@ -43,9 +43,11 @@ app.use(requestFilter);
 const router = require('./router.js');
 // const router_bs = require('./router_bs.js');
 const router_credit = require('./router_credit.js');
+const router_proof = require('./router_proof.js');
 app.use(router);
 // app.use(router_bs);
 app.use(router_credit);
+app.use(router_proof);
 
 // 绑定访问端口
 http.createServer(app.callback()).listen(config.sys.port);

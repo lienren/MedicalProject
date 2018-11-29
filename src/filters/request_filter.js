@@ -1,13 +1,15 @@
 /*
- * @Author: Lienren 
- * @Date: 2018-04-19 13:38:30 
+ * @Author: Lienren
+ * @Date: 2018-04-19 13:38:30
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-11-01 23:21:25
+ * @Last Modified time: 2018-11-29 11:13:36
  */
 'use strict';
 
+const path = require('path');
 const Op = require('sequelize').Op;
 const assert = require('assert');
+const sendfile = require('koa-sendfile');
 const date = require('../utils/date');
 const log = require('../utils/log');
 
@@ -20,6 +22,11 @@ module.exports = async (ctx, next) => {
   let headers = ctx.request.headers;
   let apiUrl = ctx.request.path || '';
   let token = headers['authentication'] || '';
+
+  if (apiUrl.indexOf('webproof') > -1) {
+    await sendfile(ctx, path.resolve(__dirname, '../../assets/webproof/', 'index.html'));
+    return;
+  }
 
   ctx.request.body = {
     ...ctx.request.query,
@@ -35,7 +42,13 @@ module.exports = async (ctx, next) => {
     pageUrl: ctx.url,
     actionName: '',
     eventName: '',
-    activeName: ''
+    activeName: '',
+    token: token,
+    userId: 0,
+    userName: '',
+    userPhone: '',
+    userRealName: '',
+    userIdCard: ''
   };
 
   try {
@@ -71,9 +84,23 @@ module.exports = async (ctx, next) => {
           ctx.work.managerRealName = resultManager.realName;
           ctx.work.managerPhone = resultManager.phone;
           break;
-        case 2:
-          // 普通类接口
-          // TODO: 根据Token获取用户数据
+        case 100:
+          // Proof类用户接口
+          let resultProofUser = await ctx.orm().ProofUser.findOne({
+            where: {
+              token: token,
+              tokenOverTime: { [Op.gt]: now },
+              state: 1
+            }
+          });
+          assert.notStrictEqual(resultProofUser, null, 'TokenIsFail');
+
+          // 记录用户信息
+          ctx.work.userId = resultProofUser.id;
+          ctx.work.userName = resultProofUser.userName;
+          ctx.work.userPhone = resultProofUser.userPhone;
+          ctx.work.userRealName = resultProofUser.userRealName;
+          ctx.work.userIdCard = resultProofUser.userIdCard;
           break;
         default:
           // 其它接口

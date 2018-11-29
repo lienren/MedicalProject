@@ -1,7 +1,7 @@
 {
   "sys": {
-    "port": 8888,
-    "domain": "http://localhost:8888",
+    "port": 20001,
+    "domain": "http://localhost:20001",
     "staticPath": "../assets/",
     "uploadFilePath": "../../assets/uploads/",
     "logFilePath": {
