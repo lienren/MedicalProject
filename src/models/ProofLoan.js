@@ -135,6 +135,14 @@ module.exports = function(sequelize, DataTypes) {
     confirmUserPhone: {
       type: DataTypes.STRING(100),
       allowNull: true
+    },
+    payMentType: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    payMentTypeName: {
+      type: DataTypes.STRING(100),
+      allowNull: true
     }
   }, {
     tableName: 'ProofLoan'

@@ -2,7 +2,7 @@
  * @Author: Lienren
  * @Date: 2018-11-22 14:07:43
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-11-29 11:24:52
+ * @Last Modified time: 2018-12-03 20:42:30
  */
 'use strict';
 
@@ -18,10 +18,12 @@ const io = require('../../utils/io');
 
 const configData = require('../ConfigData');
 
-const payKey = 'gNociwieX1aCSkhvVemcXkaF9KVmkXm8';
-const payMerid = 'yft2017082500005';
+// const payKey = 'gNociwieX1aCSkhvVemcXkaF9KVmkXm8';
+// const payMerid = 'yft2017082500005';
 // const subMerchantName = '诚友信凭证管理平台'
-const subMerchantName = '';
+// const subMerchantName = '';
+const payParter = '2279';
+const payKey = '77b981207372444e9e49acba57512ec6';
 const notifyUrl = 'http://inspiring-all.com:20001/proof/setLoanPay';
 const returnUrl = 'http://inspiring-all.com:20001/webproof/paysucc';
 const domainUrl = '';
@@ -56,6 +58,43 @@ const payTypeNameDist = {
   '1': '未支付',
   '2': '已支付',
   '999': '支付失败'
+};
+const payMentTypeNameDist = {
+  '962': '中信银行',
+  '963': '中国银行',
+  '964': '中国农业银行',
+  '965': '中国建设银行',
+  '966': '中国工商银行（仅限工行手机签约客户）',
+  '967': '中国工商银行（全国范围）',
+  '968': '浙商银行',
+  '969': '浙江稠州商业银行',
+  '970': '招商银行',
+  '971': '邮政储蓄',
+  '972': '兴业银行',
+  '973': '顺德农村信用合作社',
+  '974': '深圳发展银行',
+  '975': '上海银行',
+  '976': '上海农村商业银行',
+  '977': '浦东发展银行',
+  '978': '平安银行',
+  '979': '南京银行',
+  '980': '民生银行',
+  '981': '交通银行',
+  '982': '华夏银行',
+  '983': '杭州银行',
+  '984': '广州市农村信用社|广州市商业银行',
+  '985': '广东发展银行',
+  '986': '光大银行',
+  '987': '东亚银行',
+  '988': '渤海银行',
+  '989': '北京银行',
+  '990': '北京农村商业银行',
+  '992': '支付宝',
+  '1000': '银联扫码(银行app，美团，京东等)',
+  '1004': '微信',
+  '1006': '手机支付宝',
+  '1007': '手机微信',
+  '1008': 'QQ扫码/Wap（自动判断）'
 };
 
 module.exports = {
@@ -621,6 +660,7 @@ module.exports = {
   },
   getLoanByPay: async ctx => {
     let loanId = ctx.request.body.loanId || 0;
+    let payMentType = ctx.request.body.payMentType || 1007;
 
     assert.notStrictEqual(loanId, 0, '入参不正确！');
 
@@ -637,7 +677,7 @@ module.exports = {
 
     assert.notStrictEqual(loanInfo, null, '单据不存在！');
 
-    let merchantOutOrderNo = `${loanInfo.loanSn}${comm.randNumberCode(6)}`;
+    /* let merchantOutOrderNo = `${loanInfo.loanSn}${comm.randNumberCode(6)}`;
     let data = {
       merid: payMerid,
       merchantOutOrderNo: merchantOutOrderNo,
@@ -677,6 +717,63 @@ module.exports = {
       payName: '汇潮YZ聚合支付-快捷支付',
       addTime: now,
       updateTime: now
+    });*/
+
+    let outOrderSn = `${loanInfo.loanSn}${comm.randNumberCode(6)}`;
+    let data = {
+      parter: payParter,
+      type: `${payMentType}`,
+      value: loanInfo.serviceMoney / 100,
+      orderid: outOrderSn,
+      callbackurl: notifyUrl,
+      payerIp: '',
+      attach: `${loanInfo.id}`,
+      hrefbackurl: returnUrl
+    };
+    data.sign = encrypt.getMd5(
+      `parter=${payParter}&type=${data.type}&value=${data.value}&orderid=${data.orderid}&callbackurl=${
+        data.callbackurl
+      }${payKey}`
+    );
+
+    let payType = 1;
+
+    // 更新支付方式
+    ctx.orm().ProofLoan.update(
+      {
+        payMentType: `${payMentType}`,
+        payMentTypeName: payMentTypeNameDist[`${payMentType}`],
+        updateTime: now
+      },
+      {
+        where: {
+          id: loanInfo.id,
+          state: 1,
+          isPay: 0
+        }
+      }
+    );
+
+    // 生成支付记录
+    ctx.orm().ProofLoanPay.create({
+      userid: ctx.work.userId,
+      loanId: loanInfo.id,
+      outOrderSn: data.orderid,
+      loanSn: loanInfo.loanSn,
+      merId: '',
+      notifyUrl: data.callbackurl,
+      nonceStr: '',
+      orderMoney: `${data.value}`,
+      orderTime: '',
+      sign: data.sign,
+      payType: payType,
+      payTypeName: payTypeNameDist[`${payType}`],
+      payTime: 0,
+      reqparam: JSON.stringify(data),
+      repparam: '',
+      payName: '安信支付',
+      addTime: now,
+      updateTime: now
     });
 
     let payParam = Object.keys(data).map(key => {
@@ -686,7 +783,7 @@ module.exports = {
       };
     });
 
-    let payFormHtml = `<form id="pay_form" method="POST" action="https://alipay.3c-buy.com/api/createQuickOrder">`;
+    let payFormHtml = `<form id="pay_form" method="POST" action="http://payment.axwpay.com/bank/index.aspx">`;
     for (let i = 0, j = payParam.length; i < j; i++) {
       payFormHtml += `<input type="hidden" id="${payParam[i].itemKey}" name="${payParam[i].itemKey}" value="${
         payParam[i].itemVal
@@ -701,6 +798,7 @@ module.exports = {
   setLoanPay: async ctx => {
     console.log('ctx.request.body:', ctx.request.body);
 
+    /* 
     let merchantOutOrderNo = ctx.request.body.merchantOutOrderNo || '';
     let merid = ctx.request.body.merid || '';
     let msg = ctx.request.body.msg || '';
@@ -735,6 +833,31 @@ module.exports = {
     let payMsg = JSON.parse(msg);
     let payMoney = payMsg && payMsg.payMoney ? parseInt(parseFloat(payMsg.payMoney) * 100) : 0;
     let payType = payResult === 1 ? 2 : 1;
+    */
+    let orderid = ctx.request.body.orderid || '';
+    let opstate = ctx.request.body.opstate;
+    let ovalue = ctx.request.body.ovalue || 0;
+    let sign = ctx.request.body.sign || '';
+    let sysorderid = ctx.request.body.sysorderid || '';
+    let completiontime = ctx.request.body.completiontime || '';
+    let loanId = ctx.request.body.attach || '';
+    let msg = ctx.request.body.msg || '';
+
+    loanId = parseInt(attach);
+    assert.notStrictEqual(orderid, '', '入参不正确！');
+    assert.notStrictEqual(ovalue, 0, '入参不正确！');
+    assert.notStrictEqual(sign, '', '入参不正确！');
+    assert.notStrictEqual(sysorderid, '', '入参不正确！');
+    assert.notStrictEqual(loanId, 0, '入参不正确！');
+
+    let encrypt_sign = encrypt.getMd5(`orderid=${orderid}&opstate=${opstate}&ovalue=${ovalue}${payKey}`);
+
+    assert.ok(encrypt_sign === sign, '签名错误！');
+
+    let now = date.getTimeStamp();
+    let state = 2;
+    let payMoney = ovalue ? parseInt(parseFloat(ovalue) * 100) : 0;
+    let payType = parseInt(payResult) === 0 ? 2 : 999;
     ctx.orm().ProofLoanPay.update(
       {
         payType,
