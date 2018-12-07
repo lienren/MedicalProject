@@ -2,7 +2,7 @@
  * @Author: Lienren
  * @Date: 2018-11-22 19:29:07
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-11-27 11:20:38
+ * @Last Modified time: 2018-12-04 10:56:14
  */
 'use strict';
 
@@ -15,7 +15,7 @@ const router = new Router({
 
 for (let className in ctrl) {
   for (let funName in ctrl[className]) {
-    router.post(`/${funName}`, ctrl[className][funName]);
+    router.all(`/${funName}`, ctrl[className][funName]);
   }
 }
 

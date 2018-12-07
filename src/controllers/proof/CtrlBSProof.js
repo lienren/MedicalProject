@@ -2,7 +2,7 @@
  * @Author: Lienren
  * @Date: 2018-11-22 14:07:43
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-12-03 20:42:30
+ * @Last Modified time: 2018-12-07 16:18:50
  */
 'use strict';
 
@@ -98,6 +98,390 @@ const payMentTypeNameDist = {
 };
 
 module.exports = {
+  getStsOrdersAll: async ctx => {
+    let today = date.getTodayTimeStamp();
+    let result1 = await ctx
+      .orm()
+      .sql.select()
+      .from('ProofLoan')
+      .field('count(1) as todayLoanCount')
+      .where('addTime between ? and ?', today.starttime, today.endtime)
+      .query();
+
+    let result11 = await ctx
+      .orm()
+      .sql.select()
+      .from('ProofLoan')
+      .field('sum(serviceMoney) / 100 as todayServiceMoney')
+      .where('isPay = ? and addTime between ? and ?', 1, today.starttime, today.endtime)
+      .query();
+
+    let result111 = await ctx
+      .orm()
+      .sql.select()
+      .from('ProofLoan')
+      .field('count(1) as loanCount')
+      .query();
+
+    let result1111 = await ctx
+      .orm()
+      .sql.select()
+      .from('ProofLoan')
+      .field('sum(serviceMoney) / 100 as serviceMoney')
+      .where('isPay = ?', 1)
+      .query();
+
+    let result3 = await ctx
+      .orm()
+      .sql.select()
+      .from(
+        ctx
+          .orm()
+          .sql.select()
+          .from('ProofLoan')
+          .field("DATE_FORMAT(FROM_UNIXTIME(addTime/1000),'%m/%d') as date")
+          .field('serviceMoney/100 as serviceMoney')
+          .where('isPay = ?', 1),
+        'a'
+      )
+      .field('a.date')
+      .field('sum(a.serviceMoney) as serviceMoney')
+      .field('count(a.serviceMoney) as loanCount')
+      .group('a.date')
+      .query();
+
+    let now = new Date().getTime();
+    let dayTime = 24 * 3600 * 1000 * -1;
+    let month = [];
+    for (let i = 0, j = 30; i < j; i++) {
+      let dayStr = date.formatDate(new Date(now), 'MM/DD');
+
+      let serviceMoney = 0;
+      let loanCount = 0;
+      let a = result3.filter(d => {
+        return d.date === dayStr;
+      });
+
+      if (a && a.length > 0) {
+        serviceMoney = parseFloat(a[0].serviceMoney);
+        loanCount = parseFloat(a[0].loanCount);
+      }
+
+      month.push({
+        日期: dayStr,
+        下单数: loanCount,
+        服务费总金额: serviceMoney
+      });
+
+      now += dayTime;
+    }
+
+    month.reverse();
+
+    ctx.body = {
+      ...result1[0],
+      ...result11[0],
+      ...result111[0],
+      ...result1111[0],
+      month: month
+    };
+  },
+  getUsers: async ctx => {
+    let current = ctx.request.body.current || 1;
+    let pageSize = ctx.request.body.pageSize || 20;
+    let userName = ctx.request.body.userName || '';
+    let userRealName = ctx.request.body.userRealName || '';
+    let userPhone = ctx.request.body.userPhone || '';
+    let userIdCard = ctx.request.body.userIdCard || '';
+    let state = ctx.request.body.state || [];
+    let stime = ctx.request.body.stime || 0;
+    let etime = ctx.request.body.etime || 0;
+
+    let condition = {};
+
+    if (userName !== '') {
+      condition.userName = {
+        [Op.like]: `%${userName}%`
+      };
+    }
+
+    if (userRealName !== '') {
+      condition.userRealName = {
+        [Op.like]: `%${userRealName}%`
+      };
+    }
+
+    if (userPhone !== '') {
+      condition.userPhone = {
+        [Op.like]: `%${userPhone}%`
+      };
+    }
+
+    if (userIdCard !== '') {
+      condition.userIdCard = {
+        [Op.like]: `%${userIdCard}%`
+      };
+    }
+
+    if (state.length > 0) {
+      condition.state = {
+        [Op.in]: state
+      };
+    }
+
+    if (stime > 0 && etime > 0) {
+      condition.addTime = {
+        [Op.between]: [stime, etime]
+      };
+    }
+
+    let resultCount = await ctx.orm().ProofUser.findAndCount({
+      where: condition
+    });
+    let result = await ctx.orm().ProofUser.findAll({
+      offset: (current - 1) * pageSize,
+      limit: pageSize,
+      where: condition,
+      order: [['id', 'DESC']]
+    });
+
+    ctx.body = {
+      total: resultCount.count,
+      list: result,
+      current,
+      pageSize
+    };
+  },
+  setUserState: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let state = ctx.request.body.state || 1;
+
+    assert.notStrictEqual(id, 0, '入参不正确！');
+
+    let now = date.getTimeStamp();
+
+    ctx.orm().ProofUser.update(
+      {
+        state: state,
+        stateName: userStateNameDist[`${state}`],
+        updateTime: now
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
+  getLoans: async ctx => {
+    let current = ctx.request.body.current || 1;
+    let pageSize = ctx.request.body.pageSize || 20;
+    let loanSn = ctx.request.body.loanSn || '';
+    let loanUserPhone = ctx.request.body.loanUserPhone || '';
+    let loanUserRealName = ctx.request.body.loanUserRealName || '';
+    let loanUserIdCard = ctx.request.body.loanUserIdCard || '';
+    let masterUserPhone = ctx.request.body.masterUserPhone || '';
+    let masterUserRealName = ctx.request.body.masterUserRealName || '';
+    let masterUserIdCard = ctx.request.body.masterUserIdCard || '';
+    let confirmUserPhone = ctx.request.body.confirmUserPhone || '';
+    let minLoanMoney = ctx.request.body.minLoanMoney || 0;
+    let maxLoanMoney = ctx.request.body.maxLoanMoney || 999999999;
+    let sloanTime = ctx.request.body.sloanTime || 0;
+    let eloanTime = ctx.request.body.eloanTime || 0;
+    let srepayTime = ctx.request.body.srepayTime || 0;
+    let erepayTime = ctx.request.body.erepayTime || 0;
+    let rate = ctx.request.body.rate || -1;
+    let loanUse = ctx.request.body.loanUse || -1;
+    let state = ctx.request.body.state || [];
+    let minServiceMoney = ctx.request.body.minServiceMoney || 0;
+    let maxServiceMoney = ctx.request.body.maxServiceMoney || 999999999;
+    let isPay = ctx.request.body.isPay || -1;
+    let spayTime = ctx.request.body.spayTime || 0;
+    let epayTime = ctx.request.body.epayTime || 0;
+    let loanType = ctx.request.body.loanType || -1;
+    let payMentType = ctx.request.body.payMentType || -1;
+    let stime = ctx.request.body.stime || 0;
+    let etime = ctx.request.body.etime || 0;
+
+    let condition = {};
+
+    if (loanSn !== '') {
+      condition.loanSn = loanSn;
+    }
+
+    if (loanUserPhone !== '') {
+      condition.loanUserPhone = {
+        [Op.like]: `%${loanUserPhone}%`
+      };
+    }
+
+    if (loanUserRealName !== '') {
+      condition.loanUserRealName = {
+        [Op.like]: `%${loanUserRealName}%`
+      };
+    }
+
+    if (loanUserIdCard !== '') {
+      condition.loanUserIdCard = {
+        [Op.like]: `%${loanUserIdCard}%`
+      };
+    }
+
+    if (masterUserPhone !== '') {
+      condition.masterUserPhone = {
+        [Op.like]: `%${masterUserPhone}%`
+      };
+    }
+
+    if (masterUserRealName !== '') {
+      condition.masterUserRealName = {
+        [Op.like]: `%${masterUserRealName}%`
+      };
+    }
+
+    if (masterUserIdCard !== '') {
+      condition.masterUserIdCard = {
+        [Op.like]: `%${masterUserIdCard}%`
+      };
+    }
+
+    if (confirmUserPhone !== '') {
+      condition.confirmUserPhone = {
+        [Op.like]: `%${confirmUserPhone}%`
+      };
+    }
+
+    condition.loanMoney = {
+      [Op.between]: [minLoanMoney, maxLoanMoney]
+    };
+
+    if (sloanTime > 0 && eloanTime > 0) {
+      condition.loanTime = {
+        [Op.between]: [sloanTime, eloanTime]
+      };
+    }
+
+    if (srepayTime > 0 && erepayTime > 0) {
+      condition.repayTime = {
+        [Op.between]: [srepayTime, erepayTime]
+      };
+    }
+
+    if (rate > -1) {
+      condition.rate = rate;
+    }
+
+    if (loanUse > -1) {
+      condition.loanUse = loanUse;
+    }
+
+    if (state.length > 0) {
+      condition.state = {
+        [Op.in]: state
+      };
+    }
+
+    if (isPay > -1) {
+      condition.isPay = isPay;
+    }
+
+    if (spayTime > 0 && epayTime > 0) {
+      condition.payTime = {
+        [Op.between]: [spayTime, epayTime]
+      };
+    }
+
+    condition.serviceMoney = {
+      [Op.between]: [minServiceMoney, maxServiceMoney]
+    };
+
+    if (loanType > -1) {
+      condition.loanType = loanType;
+    }
+
+    if (payMentType > -1) {
+      condition.payMentType = payMentType;
+    }
+
+    if (stime > 0 && etime > 0) {
+      condition.addTime = {
+        [Op.between]: [stime, etime]
+      };
+    }
+
+    let resultCount = await ctx.orm().ProofLoan.findAndCount({
+      where: condition
+    });
+    let result = await ctx.orm().ProofLoan.findAll({
+      offset: (current - 1) * pageSize,
+      limit: pageSize,
+      where: condition,
+      order: [['id', 'DESC']]
+    });
+
+    ctx.body = {
+      total: resultCount.count,
+      list: result,
+      current,
+      pageSize
+    };
+  },
+  setAllLoanState: async ctx => {
+    let id = ctx.request.body.id || 0;
+    let state = ctx.request.body.state || 0;
+
+    assert.notStrictEqual(id, 0, '入参不正确！');
+    assert.notStrictEqual(state, 0, '入参不正确！');
+
+    let now = date.getTimeStamp();
+
+    ctx.orm().ProofLoan.update(
+      {
+        state: state,
+        stateName: loanStateNameDist[`${state}`],
+        updateTime: now
+      },
+      {
+        where: {
+          id: id
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
+  getProofConfig: async ctx => {
+    let tpName = ctx.request.body.tpName || 'serviceMoney';
+
+    let result = await ctx.orm().ProofConfig.findOne({
+      where: {
+        tpName: tpName
+      }
+    });
+
+    ctx.body = result;
+  },
+  setProofConfig: async ctx => {
+    let tpName = ctx.request.body.tpName || '';
+    let tpValue = ctx.request.body.tpValue || {};
+
+    assert.notStrictEqual(tpName, '', '入参不正确！');
+
+    ctx.orm().ProofConfig.update(
+      {
+        tpValue: JSON.stringify(tpValue)
+      },
+      {
+        where: {
+          tpName: tpName
+        }
+      }
+    );
+
+    ctx.body = {};
+  },
   register: async ctx => {
     let userName = ctx.request.body.userName || '';
     let userPhone = ctx.request.body.userPhone || '';
@@ -375,7 +759,7 @@ module.exports = {
   calculationServiceMoney: async ctx => {
     let loanMoney = ctx.request.body.loanMoney || 0;
 
-    assert.notStrictEqual(loanMoney, 0, '入参不正确！');
+    // assert.notStrictEqual(loanMoney, 0, '入参不正确！');
 
     let serviceMoney = 0;
 
@@ -840,10 +1224,10 @@ module.exports = {
     let sign = ctx.request.body.sign || '';
     let sysorderid = ctx.request.body.sysorderid || '';
     let completiontime = ctx.request.body.completiontime || '';
-    let loanId = ctx.request.body.attach || '';
+    let loanId = ctx.request.body.attach || 0;
     let msg = ctx.request.body.msg || '';
 
-    loanId = parseInt(attach);
+    loanId = parseInt(loanId);
     assert.notStrictEqual(orderid, '', '入参不正确！');
     assert.notStrictEqual(ovalue, 0, '入参不正确！');
     assert.notStrictEqual(sign, '', '入参不正确！');
@@ -857,7 +1241,7 @@ module.exports = {
     let now = date.getTimeStamp();
     let state = 2;
     let payMoney = ovalue ? parseInt(parseFloat(ovalue) * 100) : 0;
-    let payType = parseInt(payResult) === 0 ? 2 : 999;
+    let payType = parseInt(opstate) === 0 ? 2 : 999;
     ctx.orm().ProofLoanPay.update(
       {
         payType,
@@ -868,7 +1252,7 @@ module.exports = {
       },
       {
         where: {
-          outOrderSn: merchantOutOrderNo,
+          outOrderSn: orderid,
           payType: 1,
           payTime: 0
         }
@@ -893,6 +1277,6 @@ module.exports = {
       }
     );
 
-    ctx.body = 'success';
+    ctx.body = 'opstate=0';
   }
 };

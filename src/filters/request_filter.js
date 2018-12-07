@@ -2,7 +2,7 @@
  * @Author: Lienren
  * @Date: 2018-04-19 13:38:30
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-11-29 11:13:36
+ * @Last Modified time: 2018-12-04 12:17:16
  */
 'use strict';
 
@@ -116,7 +116,7 @@ module.exports = async (ctx, next) => {
     // 记录响应日志
     // log.logResponse(ctx, ms);
 
-    if (apiUrl.indexOf('editor') === -1) {
+    if (!ctx.disableBodyParserReturn) {
       ctx.body = {
         code: '000000',
         message: 'success',

@@ -1,8 +1,8 @@
 /*
- * @Author: Lienren 
- * @Date: 2018-04-19 11:52:42 
+ * @Author: Lienren
+ * @Date: 2018-04-19 11:52:42
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-11-23 00:03:10
+ * @Last Modified time: 2018-12-04 12:17:04
  */
 'use strict';
 
@@ -22,6 +22,24 @@ app.use(koastatic(path.resolve(__dirname, config.sys.staticPath)));
 
 // 配置跨域访问
 app.use(cors());
+
+// 清除content-encoding请求头编码
+app.use(async (ctx, next) => {
+  delete ctx.request.headers['content-encoding'];
+  await next();
+});
+
+app.use(async (ctx, next) => {
+  ctx.disableBodyParser = false;
+  ctx.disableBodyParserReturn = false;
+
+  let path = ctx.path.toLowerCase();
+
+  if (path.indexOf('/proof/setloanpay') >= 0 || path.indexOf('editor') >= 0) {
+    ctx.disableBodyParserReturn = true;
+  }
+  await next();
+});
 
 // 使用koa-bodyparser中间件
 app.use(
