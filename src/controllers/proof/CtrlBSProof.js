@@ -2,7 +2,7 @@
  * @Author: Lienren
  * @Date: 2018-11-22 14:07:43
  * @Last Modified by: Lienren
- * @Last Modified time: 2018-12-17 23:34:43
+ * @Last Modified time: 2019-03-20 21:48:47
  */
 'use strict';
 
@@ -18,12 +18,10 @@ const io = require('../../utils/io');
 
 const configData = require('../ConfigData');
 
-// const payKey = 'gNociwieX1aCSkhvVemcXkaF9KVmkXm8';
-// const payMerid = 'yft2017082500005';
-// const subMerchantName = '诚友信凭证管理平台'
-// const subMerchantName = '';
-const customerId = 180898610;
-const payKey = '2axv2yenqeix63n8z4u9mu93nxedkmxp';
+// const customerId = '190355486';
+// const payKey = 'tnhq3sa7lh0w68vritfl4t1f85r33rb9';
+const customerId = '1903190624';
+const payKey = '26e81a1cc69cc8983d93f2218f4ac7c4';
 const notifyUrl = 'http://inspiring-all.com:20001/proof/setLoanPay';
 const returnUrl = 'http://inspiring-all.com:20001/webproof/paysucc';
 const domainUrl = '';
@@ -60,24 +58,9 @@ const payTypeNameDist = {
   '999': '支付失败'
 };
 const payMentTypeNameDist = {
-  '917': '支付宝',
-  '920': '微信',
-  '101': '中国工商银行',
-  '201': '中国招商银行',
-  '301': '中国建设银行',
-  '401': '中国农业银行',
-  '501': '中信银行',
-  '701': '中国光大银行',
-  '801': '平安银行',
-  '1101': '交通银行',
-  '1201': '中国银行',
-  '1901': '广发银行',
-  '1902': '中国邮政储蓄银行',
-  '1903': '中国民生银行',
-  '1904': '华夏银行',
-  '1905': '兴业银行',
-  '1906': '上海银行',
-  '1909': '北京银行'
+  '1114': '支付宝',
+  '1096': '微信',
+  '1117': '云闪付'
 };
 
 module.exports = {
@@ -1027,7 +1010,8 @@ module.exports = {
   },
   getLoanByPay: async ctx => {
     let loanId = ctx.request.body.loanId || 0;
-    let payMentType = ctx.request.body.payMentType || 917;
+    // let payMentType = ctx.request.body.payMentType || 904;
+    let payMentType = ctx.request.body.payMentType || 1117;
 
     assert.notStrictEqual(loanId, 0, '入参不正确！');
 
@@ -1045,35 +1029,57 @@ module.exports = {
     assert.notStrictEqual(loanInfo, null, '单据不存在！');
 
     let outOrderSn = `${loanInfo.loanSn}${comm.randNumberCode(6)}`;
-    let data = {
+    /* let data = {
+      pay_applydate: date.timestampToTime(now),
       pay_memberid: customerId,
-      pay_orderid: outOrderSn,
-      pay_amount: (loanInfo.serviceMoney / 100).toFixed(2),
-      pay_bankcode: payMentType === 917 || payMentType === 920 ? payMentType : 918,
-      pay_banktype: payMentType === 917 || payMentType === 920 ? '' : payMentType,
       pay_notifyurl: notifyUrl,
       pay_callbackurl: returnUrl,
-      pay_attach: `${loanInfo.id}`,
-      pay_applydate: date.timestampToTime(now),
-      pay_productname: '单据凭证服务费'
-    };
-    data.pay_md5sign = encrypt
+      pay_amount: (loanInfo.serviceMoney / 100).toFixed(2),
+      pay_bankcode: `${payMentType}`,
+      pay_orderid: outOrderSn
+    }; */
+
+    /* data.pay_md5sign = encrypt
       .getMd5(
-        `pay_amount=${data.pay_amount}&pay_applydate=${data.pay_applydate}&pay_bankcode=${
-          data.pay_bankcode
-        }&pay_callbackurl=${data.pay_callbackurl}&pay_memberid=${data.pay_memberid}&pay_notifyurl=${
-          data.pay_notifyurl
-        }&pay_orderid=${data.pay_orderid}&key=${payKey}`
+        Object.keys(data)
+        .sort()
+        .map(m => {
+          return `${m}=${data[m]}`;
+        })
+        .join('&') + `&key=${payKey}`
       )
-      .toUpperCase();
+      .toUpperCase(); 
+    
+      data.pay_productname = '凭证服务费';
+    */
+
+    let data = {
+      app_id: customerId,
+      notify_url: notifyUrl,
+      out_trade_no: outOrderSn,
+      total_amount: loanInfo.serviceMoney,
+      trade_type: 'ALIPAY_H5',
+      interface_version: 'V2.0',
+      return_url: returnUrl,
+      extra_return_param: '',
+      client_ip: '',
+      sign: ''
+    };
+
+    data.sign = encrypt
+      .getMd5(
+        `app_id=${data.app_id}&notify_url=${data.notify_url}&out_trade_no=${data.out_trade_no}&total_amount=${
+          data.total_amount
+        }&trade_type=${data.trade_type}${payKey}`
+      ).toLowerCase();
 
     let payType = 1;
 
     // 更新支付方式
     ctx.orm().ProofLoan.update(
       {
-        payMentType: `${payMentType}`,
-        payMentTypeName: payMentTypeNameDist[`${payMentType}`],
+        payMentType: 'ALIPAY_H5',
+        payMentTypeName: '支付宝H5',
         updateTime: now
       },
       {
@@ -1089,20 +1095,20 @@ module.exports = {
     ctx.orm().ProofLoanPay.create({
       userid: ctx.work.userId,
       loanId: loanInfo.id,
-      outOrderSn: data.pay_orderid,
+      outOrderSn: data.out_trade_no,
       loanSn: loanInfo.loanSn,
-      merId: data.pay_memberid,
-      notifyUrl: data.notifyurl,
-      nonceStr: payMentTypeNameDist[`${payMentType}`],
-      orderMoney: `${data.total_fee}`,
-      orderTime: data.pay_applydate,
-      sign: data.pay_md5sign,
+      merId: data.app_id,
+      notifyUrl: data.notify_url,
+      nonceStr: '支付宝H5',
+      orderMoney: `${(data.total_amount / 100).toFixed(2)}`,
+      orderTime: `${date.timestampToTime(now)}`,
+      sign: data.sing,
       payType: payType,
       payTypeName: payTypeNameDist[`${payType}`],
       payTime: 0,
       reqparam: JSON.stringify(data),
       repparam: '',
-      payName: '迅联宝支付',
+      payName: '航天支付',
       addTime: now,
       updateTime: now
     });
@@ -1114,7 +1120,7 @@ module.exports = {
       };
     });
 
-    let payFormHtml = `<form id="pay_form" method="POST" action="http://www.777pay.cn/Pay_Index.html">`;
+    let payFormHtml = `<form id="pay_form" method="POST" action="http://pay.mych2018.com/pay/gateway">`;
     for (let i = 0, j = payParam.length; i < j; i++) {
       payFormHtml += `<input type="hidden" id="${payParam[i].itemKey}" name="${payParam[i].itemKey}" value="${
         payParam[i].itemVal
@@ -1129,34 +1135,64 @@ module.exports = {
   setLoanPay: async ctx => {
     console.log('ctx.request.body:', ctx.request.body);
 
-    let memberid = ctx.request.body.memberid || '';
+    let orderid = ctx.request.body.out_trade_no || '';
+    let orderstatus = ctx.request.body.trade_status || '';
+    let amount = ctx.request.body.total_amount || '';
+    let sign = ctx.request.body.sign || '';
+    let trade_no = ctx.request.body.trade_no || '';
+
+    assert.notStrictEqual(orderid, '', '入参不正确！');
+    assert.notStrictEqual(amount, '', '入参不正确！');
+    assert.notStrictEqual(sign, '', '入参不正确！');
+    assert.notStrictEqual(orderstatus, '', '入参不正确！');
+
+    let encrypt_sign = encrypt
+      .getMd5(`out_trade_no=${orderid}&total_amount=${amount}&trade_status=${orderstatus}${payKey}`)
+      .toLowerCase();
+
+    /* let memberid = ctx.request.body.memberid || '';
     let orderid = ctx.request.body.orderid || '';
+    let returncode = ctx.request.body.returncode || '';
     let amount = ctx.request.body.amount || '';
     let datetime = ctx.request.body.datetime || '';
-    let returncode = ctx.request.body.returncode || '';
-    let sign = ctx.request.body.sign || '';
     let transaction_id = ctx.request.body.transaction_id || '';
+    let sign = ctx.request.body.sign || '';
 
     assert.notStrictEqual(memberid, '', '入参不正确！');
     assert.notStrictEqual(orderid, '', '入参不正确！');
     assert.notStrictEqual(amount, '', '入参不正确！');
-    assert.notStrictEqual(datetime, '', '入参不正确！');
-    assert.notStrictEqual(returncode, '', '入参不正确！');
     assert.notStrictEqual(sign, '', '入参不正确！');
+    assert.notStrictEqual(returncode, '', '入参不正确！');
     assert.notStrictEqual(transaction_id, '', '入参不正确！');
+
+    let data = {
+      memberid,
+      orderid,
+      returncode,
+      amount,
+      datetime,
+      transaction_id
+    };
 
     let encrypt_sign = encrypt
       .getMd5(
-        `amount=${amount}&datetime=${datetime}&memberid=${memberid}&orderid=${orderid}&returncode=${returncode}&transaction_id=${transaction_id}&key=${payKey}`
+        Object.keys(data)
+        .sort()
+        .map(m => {
+          return `${m}=${data[m]}`;
+        })
+        .join('&') + `&key=${payKey}`
       )
       .toUpperCase();
+    */
 
     assert.ok(encrypt_sign === sign, '签名错误！');
 
     let now = date.getTimeStamp();
     let state = 2;
-    let payMoney = amount ? parseInt(parseFloat(amount) * 100) : 0;
-    let payType = returncode === '00' ? 2 : 999;
+    let payMoney = amount ? parseInt(amount) : 0;
+    // let payType = returncode === '00' ? 2 : 999;
+    let payType = orderstatus === 'SUCCESS' ? 2 : 999;
 
     let loanPayInfo = await ctx.orm().ProofLoanPay.findOne({
       where: {
@@ -1203,7 +1239,8 @@ module.exports = {
       );
     }
 
-    ctx.body = 'OK';
+    // ctx.body = 'OK';
+    ctx.body = 'SUCCESS';
   },
   setGoodsPay: async ctx => {
     let now = date.getTimeStamp();
